@@ -39,9 +39,9 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     ),
 
     [1] = LAYOUT_75_ansi(
-        _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  KC_MPLY,  KC_MPRV,  KC_MNXT,  _______,  _______,  _______,  _______,
+        _______,  KC_F13,   KC_F14,   KC_F15,   KC_F16,   KC_F17,   KC_F18,   KC_F19,   KC_F20,   KC_F21,   KC_F22,   KC_F23,   KC_F24,   _______,  _______,  _______,
         _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  QK_BOOT,  _______,
-        _______,  RGB_TOG,  RGB_M_P,  RGB_HUI,  RGB_HUD,  _______,  _______,  _______,  _______,  _______,   PAS_TOG,  _______,  _______,  _______,  _______,
+        _______,  RGB_TOG,  RGB_M_P,  RGB_HUI,  RGB_HUD,  _______,  _______,  _______,  _______,  _______,  PAS_TOG,  _______,  _______,  _______,  _______,
         _______,  _______,  _______,  _______,  _______,  _______,  _______,  _______,  KC_MPLY,  _______,  _______,  _______,            _______,  _______,
         _______,  _______,  _______,  _______,  _______,  _______,  _______,  MAC_TOG,  _______,  _______,  _______,  _______,            KC_VUP,   _______,
         _______,  _______,  _______,                                _______,            _______,            _______,  _______,  _______,  KC_VDWN,  _______
@@ -123,6 +123,9 @@ uint8_t macMode = true;
 uint8_t macDesktop = 0;
 uint8_t passiveMode = false;
 
+uint8_t strafeLeft = false;
+uint8_t strafeRight = false;
+
 void raw_hid_receive(uint8_t *data, uint8_t length) {
     if (length > 0 && data[0] == 'l') {
         macMode = false;
@@ -194,7 +197,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
     switch (keycode) {
         case FN:
-            TAP_HOLD_MACRO(layer_move(1), layer_move(2), layer_move(0));
+            TAP_HOLD_MACRO(layer_move(1), layer_move(0), layer_move(0));
             return false;
 
         case FN2:
@@ -243,20 +246,22 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
         case KC_6:
             if (!SHIFT_STATE || macMode) break;
+            // FALLTHROUGH
         case KC_QUOT: case KC_GRV:
             if (get_mods() & MOD_MASK_CAG) break;
             CLEAR_VARS();
 
             if (record->event.pressed) {
                 tap_code(keycode);
-                if (keycode != KC_6) {
+                // if (keycode != KC_6) {
                     tap_code(KC_SPC);
-                }
+                // }
 
                 lastAccentKeycode = SHIFT_STATE ? LSFT(keycode) : keycode;
             }
 
-            return keycode == KC_6;
+            // return keycode == KC_6;
+            return false;
 
         case KC_SPC:
             if (lastAccentKeycode) {
@@ -267,7 +272,14 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 
         case KC_C: //Ç
             if (lastAccentKeycode != KC_QUOT) break;
-        case KC_A: case KC_E: case KC_I: case KC_O: case KC_U:
+            // FALLTHROUGH
+        case KC_A:
+            strafeLeft = record->event.pressed;
+            if (strafeLeft && strafeRight) {
+                unregister_code(KC_D);
+            }
+            // FALLTHROUGH
+        case KC_E: case KC_I: case KC_O: case KC_U:
             if (record->event.pressed && (lastAccentKeycode == KC_QUOT || (lastAccentKeycode & KC_GRV) == KC_GRV || lastAccentKeycode == LSFT(KC_6))) {
                 bool letter_shift_enabled = !(lastAccentKeycode & QK_LSFT) && SHIFT_STATE;
 
@@ -284,6 +296,13 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 CLEAR_VARS();
                 // secondToLastKeycode = KC_A; // Any alphabet letter will work.
                 return true;
+            }
+            break;
+
+        case KC_D:
+            strafeRight = record->event.pressed;
+            if (strafeLeft && strafeRight) {
+                unregister_code(KC_A);
             }
             break;
 
@@ -332,4 +351,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 //             turboTimer = timer_read();
 //         }
 //     }
+// }
+
+// bool process_detected_host_os_kb(os_variant_t detected_os) {
+//     if (!process_detected_host_os_user(detected_os)) {
+//         return false;
+//     }
+//     macMode = (detected_os == OS_MACOS);
+//     return true;
 // }
